@@ -1,0 +1,43 @@
+version: '3.4'
+
+networks:
+  dev:
+    driver: bridge
+
+volumes:
+  app_data:
+  
+services: 
+  celestials:
+    image: docker.io/library/celestials:dev
+    depends_on:
+      - "pg_db"
+    container_name: celestials-dev-app 
+    restart: always
+    ports:
+      - "8081:80"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - DATABASE_CONNECTION=User ID=postgres;Password=postgres;Server=pg_db;Port=5432;Database=celestials-dev-db;Integrated Security=true;Pooling=true;
+      - DATABASE_MIGRATE=true
+    networks:
+      - dev
+
+  pg_db:
+    image: postgres:latest
+    container_name: celestials-dev-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5433:5432"
+    restart: always
+    volumes:
+      - app_data:/var/lib/postgresql/data
+    networks:
+      - dev
+
