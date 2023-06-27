@@ -15,11 +15,17 @@ namespace Presentation
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddCors(options =>
             {
-                options.AddDefaultPolicy(builder =>
+                options.AddPolicy("DevelopmentPolicy", builder =>
                 {
                     builder.AllowAnyOrigin()
                            .AllowAnyMethod()
                            .AllowAnyHeader();
+                });
+                options.AddPolicy("ProductionPolicy", builder =>
+                {
+                    builder.WithOrigins("https://celestialsweb.netlify.app")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
                 });
             });
             var config = builder.Configuration;
@@ -60,18 +66,18 @@ namespace Presentation
                     }
                 }
             }
-            app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:3000"));
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
+                app.UseCors("DevelopmentPolicy");
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
             else
             {
+                app.UseCors("ProductionPolicy");
                 app.UseHttpsRedirection();
-
             }
 
             app.UseAuthorization();

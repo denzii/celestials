@@ -88,8 +88,8 @@ resource "azurerm_linux_web_app" "celestials_prod_web_app" {
   app_settings = {
         DOCKER_REGISTRY_SERVER_USERNAME     = "celestialscr"
         DOCKER_REGISTRY_SERVER_PASSWORD     = var.azure_app_service_principal_password
-        DOCKER_REGISTRY_SERVER_URL          = "${azurerm_container_registry.celestials_prod_cr.name}.azurecr.io"
-        WEBSITES_ENABLE_APP_SERVICE_STORAGE = false
+        DOCKER_REGISTRY_SERVER_URL          = "celestialscr.azurecr.io"
+        WEBSITES_ENABLE_APP_SERVICE_STORAGE = "false"
   }
 }
 resource "azurerm_role_assignment" "celestials_web_app_kv_access" {
@@ -198,7 +198,7 @@ resource "azurerm_key_vault_secret" "celestials_prod_db_connection" {
 // set env variables on the local machine and run the deploy script
 resource "null_resource" "celestials_localhost_provisioner" {
   provisioner "local-exec" {
-    command     = "./bin/deploy.sh"
+    command     = "./script/deploy.sh"
     interpreter = ["/bin/bash"]
     working_dir = path.module
     
@@ -218,6 +218,7 @@ resource "null_resource" "celestials_localhost_provisioner" {
       # the below az server secrets are set as non sensitive here
       # this is done to avoid the  suppression of output from deploy.sh
       # its okay as the script itself doesnt display those on the console
+      AZURE_DOCKER_REGISTRY_SERVER_URL             = "celestialscr.azurecr.io"  # Update the URL here
       AZURE_DOCKER_REGISTRY_SERVER_USER            = "celestialscr"
       AZURE_DOCKER_REGISTRY_SERVER_PASSWORD        = var.azure_app_service_principal_password
     }
