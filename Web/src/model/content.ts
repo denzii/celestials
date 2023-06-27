@@ -6,7 +6,7 @@ export default class Content {
     static heroSupplementary = [
         'The initial data is fetched on pageload',
         'Each element can be clicked on to make subsequent requests for details.',
-        'Data is never fetched twice, once fetched it is saved into localstorage.'
+        'Data is never fetched twice, once fetched it is saved into state.'
     ];
     static footerDescription = 'Footer info such as author and copy-right notice.';
     static footerText = 'Deniz Arca Submission 05/07/2023';

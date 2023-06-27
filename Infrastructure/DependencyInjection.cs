@@ -15,11 +15,10 @@ namespace Infrastructure
             {
                 connectionString = testDbConnection;
             }
-            services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+            services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
             services.AddScoped(typeof(IRepo<>), typeof(Repo<>));
 
             return services;
         }
-
     }
 }

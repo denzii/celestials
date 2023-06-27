@@ -1,4 +1,7 @@
 using Application;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Domain.Model;
 using Infrastructure;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -28,10 +31,16 @@ namespace Presentation
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            var dbConn = builder.Environment.IsDevelopment()
+                ? config.GetValue<string>("DATABASE_CONNECTION")
+                : getDbConnectionFromKeyVault();
+
+            builder.Services.AddScoped(x => new Database { Connection = dbConn! });
+
             builder.Services.AddAppLayer()
                 .AddInfraLayer(
                     builder.Environment.IsEnvironment("Test"), 
-                    config.GetValue<string>("DATABASE_CONNECTION")!, 
+                    dbConn!,    
                     config.GetSection("Test:Database:Connection").Value!
                 );
 
@@ -71,5 +80,22 @@ namespace Presentation
 
             app.Run();
         }
+
+        private static string? getDbConnectionFromKeyVault()
+        {
+            string keyVaultName = "celestials-key-vault";
+            string keyVaultUrl = $"https://{keyVaultName}.vault.azure.net/";
+
+            var credential = new DefaultAzureCredential();
+            var client = new SecretClient(new Uri(keyVaultUrl), credential);
+
+            string secretName = "celestials-prod-db-connection";
+            KeyVaultSecret secret = client.GetSecret(secretName);
+            string connectionString = secret.Value;
+
+            return connectionString.Substring(connectionString.IndexOf('=') + 1).Trim();
+        }
     }
 }
+
+

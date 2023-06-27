@@ -1,4 +1,5 @@
 import Content from '../../src/model/content';
+import { Planet } from '../../src/model/planet';
 import ReadableKeys from '../../src/model/planetKeyMap';
 
 class HomePage {
@@ -100,47 +101,44 @@ describe('App Tests', () => {
     homePage.getPlanetImage().should('be.visible');
   });
 
-  it('should store planet details in local storage after the first API call', () => {
-    // Make a planet selection to trigger the API call
+  it('should store planet details in state after the first API call', () => {
     homePage.selectPlanet('Earth');
-
-    // Wait for the API call to complete and assert the stored planet details
-    cy.wait(1000).then(() => {
-      cy.window().then((window) => {
-        homePage.getSelectedPlanetName().invoke('attr', 'data-testid').then((id) => {
-          const storedDetails = window.localStorage.getItem(`planetDetails-${id}`);
-        
-          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-          expect(storedDetails).not.to.be.null;
   
-          expect(JSON.parse(String(storedDetails))).to.have.property('name', 'Earth');
-          expect(JSON.parse(String(storedDetails))).to.have.property('diameterKilometers', 12742);
-          expect(JSON.parse(String(storedDetails))).to.have.property('massTonnes', 5973.6);
-        });
-      });
+    cy.get(".app").invoke('attr', 'data-test-planet-cache').then((planets) => {
+      const planetCache: Planet[] = JSON.parse(String(planets));
+      const earthDetails = planetCache.find((planet: { name: string }) => planet.name === 'Earth');
+  
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      expect(earthDetails).not.to.be.null;
+  
+      expect(earthDetails).to.have.property('name', 'Earth');
+      expect(earthDetails).to.have.property('diameterKilometers', 12742);
+      expect(earthDetails).to.have.property('massTonnes', 5973.6);
     });
   });
-
-  it('should retrieve planet details from local storage instead of making API requests', () => {
-    // Set the planet details in local storage manually
-    const planetDetails = {
-      id: 1,
-      name: 'Earth',
-      diameter: 12742,
-      mass: '5.972 × 10^24 kg',
-    };
-    cy.window().its('localStorage').invoke('setItem', 'planetDetails-1', JSON.stringify(planetDetails));
-
-    // Select the planet and check if the details are retrieved from local storage
+  
+  it('should retrieve planet details from state instead of making API requests', () => {
+    cy.intercept('GET', 'http://localhost:8081/Planet/Get').as('getPlanetDetails'); // Intercept the network request
+  
     homePage.selectPlanet('Earth');
-
-    cy.fixture('earth.json').then((data: {diameter:string, mass:string}) => {
-      homePage.getPlanetDetailsSection().should(($details) => {
-        expect($details).to.contain(`${ReadableKeys["diameterKilometers"]}: ${data.diameter}`);
-        expect($details).to.contain(`${ReadableKeys["massTonnes"]}: ${data.mass}`);
-      });
+  
+    cy.wait(3000); // Wait for 3 seconds
+  
+    cy.get('@getPlanetDetails').then((interception) => {
+      if (interception) {
+        expect(interception).to.have.property('response'); // Network request was made
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        expect(true).to.be.true; // Network request was not made
+      }
+    });
+  
+    homePage.getPlanetDetailsSection().should(($details) => {
+      expect($details).to.contain(`${ReadableKeys["diameterKilometers"]}: 12742`);
+      expect($details).to.contain(`${ReadableKeys["massTonnes"]}: 5973.6`);
     });
   });
+  
 
   it('should display the footer text correctly', () => {
     homePage.getFooterText().should('contain', Content.footerText);

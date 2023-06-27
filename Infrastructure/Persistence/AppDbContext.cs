@@ -5,16 +5,23 @@ namespace Infrastructure.Persistence
 {
     public class AppDbContext : DbContext
     {
+        private readonly string? _connectionString;
+        public DbSet<Planet> Planets { get; set; }
+
         public AppDbContext()
         {
         }
 
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        public AppDbContext(DbContextOptions<AppDbContext> options, Domain.Model.Database db) : base(options)
         {
+            _connectionString = db.Connection;
         }
 
-        public DbSet<Planet> Planets { get; set; }
-
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            base.OnConfiguring(optionsBuilder);
+            optionsBuilder.UseNpgsql(_connectionString!);
+        }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Planet>().HasKey(p => p.Id);
@@ -24,7 +31,8 @@ namespace Infrastructure.Persistence
             modelBuilder.Entity<Planet>().Property(p => p.MassTonnes).IsRequired();
             modelBuilder.Entity<Planet>().Property(p => p.DiameterKilometers).IsRequired();
             modelBuilder.Entity<Planet>().Property(p => p.LengthOfDayHours).IsRequired();
-                
+            
+            var blobStorageBaseUrl = "https://celestialsblobstorage.blob.core.windows.net/celestials-blob-storage-container";
             modelBuilder.Entity<Planet>().HasData(
                     new Planet
                     {
@@ -34,7 +42,7 @@ namespace Infrastructure.Persistence
                         DistanceFromSunKilometers = 57910000,
                         LengthOfDayHours = 4222.6,
                         MassTonnes = 330.2,
-                        PhotoUrl = "https://dummyimage.com/300x300/000000/ffffff"
+                        PhotoUrl = $"{blobStorageBaseUrl}/mercury.webp"
                     },
                     new Planet
                     {
@@ -44,7 +52,7 @@ namespace Infrastructure.Persistence
                         DistanceFromSunKilometers = 108200000,
                         LengthOfDayHours = 2802,
                         MassTonnes = 4868.5,
-                        PhotoUrl = "https://dummyimage.com/300x300/000000/ffffff"
+                        PhotoUrl = $"{blobStorageBaseUrl}/venus.webp"
                     },
                     new Planet
                     {
@@ -54,7 +62,7 @@ namespace Infrastructure.Persistence
                         DistanceFromSunKilometers = 149600000,
                         LengthOfDayHours = 24,
                         MassTonnes = 5973.6,
-                        PhotoUrl = "https://dummyimage.com/300x300/000000/ffffff"
+                        PhotoUrl = $"{blobStorageBaseUrl}/earth.webp"
                     },
                     new Planet
                     {
@@ -64,7 +72,7 @@ namespace Infrastructure.Persistence
                         DistanceFromSunKilometers = 227900000,
                         LengthOfDayHours = 24.7,
                         MassTonnes = 641.71,
-                        PhotoUrl = "https://dummyimage.com/300x300/000000/ffffff"
+                        PhotoUrl = $"{blobStorageBaseUrl}/mars.webp"
                     },
                     new Planet
                     {
@@ -74,7 +82,7 @@ namespace Infrastructure.Persistence
                         DistanceFromSunKilometers = 778500000,
                         LengthOfDayHours = 9.9,
                         MassTonnes = 1898600,
-                        PhotoUrl = "https://dummyimage.com/300x300/000000/ffffff"
+                        PhotoUrl = $"{blobStorageBaseUrl}/earth.webp"
                     }
                 );
         }

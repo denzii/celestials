@@ -45,7 +45,10 @@ export const StyledMain = styled.main`
     }
 
     & .rhs__planet {
-      /* Define styles for rhs planet container */
+      & .planet__img {
+        height: 300px;
+        width: 300px;
+      }
 
       & .planet__img {
         /* Define styles for planet image */

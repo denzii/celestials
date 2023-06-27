@@ -1,4 +1,3 @@
-import './App.css';
 
 import React, { useEffect, useState } from 'react';
 import { StyledHeader } from './style/header.style';
@@ -10,15 +9,17 @@ import BaseEntity, { Planet } from './model/planet';
 import ReadableKeys from './model/planetKeyMap';
 import Content from './model/content';
 
-function App() {
-  const [planets, setPlanets] = useState<BaseEntity[]>([]);
+function App(props: { env: { CELESTIALS_PLANET_ENDPOINT: string} }) {
+  const { env } = props;
+  const [planets, setPlanets] = useState<(BaseEntity|Planet)[]>([]);
   const [selectedPlanet, setSelectedPlanet] = useState<BaseEntity | null>(null);
   const [planetDetails, setPlanetDetails] = useState<Planet | null>(null);
 
   useEffect(() => {
     const fetchPlanets = async () => {
       try {
-        const response = await fetch('http://localhost:8081/Planet/GetAll');
+        console.log(env.CELESTIALS_PLANET_ENDPOINT);
+        const response = await fetch(`${env.CELESTIALS_PLANET_ENDPOINT}/GetAll`);
         const data = await response.json();
         setPlanets(data);
       } catch (error) {
@@ -30,19 +31,28 @@ function App() {
   }, []);
 
   const fetchPlanetDetails = async (planetId: number) => {
-    const storedPlanetDetails = localStorage.getItem(`planetDetails-${planetId}`);
+    const storedPlanet = planets.find((planet) => planet.id === planetId && (planet as Planet).diameterKilometers != null);
+    
+    if (storedPlanet) {
+      console.log("Retrieving planet data from state...");
 
-    if (storedPlanetDetails) {
-      console.log("Retrieving planet data from local storage...");
-
-      setPlanetDetails(JSON.parse(storedPlanetDetails));
+      setPlanetDetails(storedPlanet as Planet);
     } else {
       try {
         console.info("Fetching planet data from api...");
-        const response = await fetch(`http://localhost:8081/Planet/Get?id=${planetId}`);
+        const response = await fetch(`${env.CELESTIALS_PLANET_ENDPOINT}/Get?id=${planetId}`);
         const data = await response.json();
         setPlanetDetails(data);
-        localStorage.setItem(`planetDetails-${planetId}`, JSON.stringify(data));
+        setPlanets((prevPlanets) => {
+          const updatedPlanets = prevPlanets.map((planet) => {
+            if (planet.id === planetId) {
+              return { ...planet, ...data };
+            }
+            return planet;
+          });
+          return updatedPlanets;
+        });
+
       } catch (error) {
         console.error('Error fetching planet details:', error);
       }
@@ -57,7 +67,7 @@ function App() {
 
   return (
     <>
-      <div className="app">
+      <div className="app" data-test-planet-cache={JSON.stringify(planets)}>
         <StyledHeader role="banner" className="app__header" aria-labelledby="header__description">
           <h2 className="header__description hidden">{Content.headerDescription}</h2>
           <a className="menu__anchor" href="/#" title="Scroll to Top">
