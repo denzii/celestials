@@ -5,6 +5,11 @@ variable "resource_group_name" {
   type        = string
   default     = "celestials-resource-group"
 }
+variable "resource_group_name2" {
+  description = "The name of the resource group in which to create the resources."
+  type        = string
+  default     = "celestials-resource-group2"
+}
 variable "service_plan_name" {
   description = "The name of the service plan."
   type        = string

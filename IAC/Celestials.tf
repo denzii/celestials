@@ -29,11 +29,14 @@ resource "azurerm_resource_group" "celestials_prod_resource_group" {
   name     = var.resource_group_name
   location = "UK South"
 }
-
+resource "azurerm_resource_group" "celestials_prod_resource_group2" {
+  name     = var.resource_group_name2
+  location = "UK South"
+}
 resource "azurerm_key_vault" "celestials_prod_key_vault" {
   name                        = var.key_vault_name
-  location                    = azurerm_resource_group.celestials_prod_resource_group.location
-  resource_group_name         = azurerm_resource_group.celestials_prod_resource_group.name
+  location                    = azurerm_resource_group.celestials_prod_resource_group2.location
+  resource_group_name         = azurerm_resource_group.celestials_prod_resource_group2.name
   enabled_for_deployment      = true
   tenant_id                   = var.azure_tenant_id
   sku_name                    = "standard"
@@ -46,8 +49,13 @@ resource "azurerm_key_vault_access_policy" "celestials_web_app_access_policy_app
   object_id          = "6067d0d0-7de1-4da8-bb06-e308d79dc4dd"
   secret_permissions = ["Get", "Set", "List"]
 }
-
-
+resource "azurerm_key_vault_access_policy" "celestials_web_app_access_policy_app2" {
+  provider = azurerm.obo
+  key_vault_id       = azurerm_key_vault.celestials_prod_key_vault.id
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  object_id          = "7d0c61e7-967a-47d2-8018-eebd705f9e7e"
+  secret_permissions = ["Get", "Set", "List"]
+}
 resource "azurerm_role_assignment" "celestials_kv_role_assignment" {
   scope                = azurerm_key_vault.celestials_prod_key_vault.id
   role_definition_name = "Key Vault Secrets Officer"
@@ -56,20 +64,24 @@ resource "azurerm_role_assignment" "celestials_kv_role_assignment" {
 
 resource "azurerm_service_plan" "celestials_prod_service_plan" {
   name                = var.service_plan_name
-  location            = azurerm_resource_group.celestials_prod_resource_group.location
-  resource_group_name = azurerm_resource_group.celestials_prod_resource_group.name
+  location            = azurerm_resource_group.celestials_prod_resource_group2.location
+  resource_group_name = azurerm_resource_group.celestials_prod_resource_group2.name
   sku_name            = "S1"
   os_type             = "Linux"
 }
 
 resource "azurerm_linux_web_app" "celestials_prod_web_app" {
   name                = var.web_app_name
-  location            = azurerm_resource_group.celestials_prod_resource_group.location
-  resource_group_name = azurerm_resource_group.celestials_prod_resource_group.name
+  location            = azurerm_resource_group.celestials_prod_resource_group2.location
+  resource_group_name = azurerm_resource_group.celestials_prod_resource_group2.name
   service_plan_id = azurerm_service_plan.celestials_prod_service_plan.id
   site_config {
     always_on = true
     container_registry_use_managed_identity = true
+    application_stack {
+      docker_image = "celestialscr.azurecr.io/celestials"
+      docker_image_tag = "latest"
+    }
   }
   identity {
     type = "SystemAssigned"
@@ -85,6 +97,7 @@ resource "azurerm_linux_web_app" "celestials_prod_web_app" {
       }
     }
   }
+
   app_settings = {
         DOCKER_REGISTRY_SERVER_USERNAME     = "celestialscr"
         DOCKER_REGISTRY_SERVER_PASSWORD     = var.azure_app_service_principal_password
@@ -100,8 +113,8 @@ resource "azurerm_role_assignment" "celestials_web_app_kv_access" {
 
 resource "azurerm_container_registry" "celestials_prod_cr" {
   name                = var.container_registry_name
-  location            = azurerm_resource_group.celestials_prod_resource_group.location
-  resource_group_name = azurerm_resource_group.celestials_prod_resource_group.name
+  location            = azurerm_resource_group.celestials_prod_resource_group2.location
+  resource_group_name = azurerm_resource_group.celestials_prod_resource_group2.name
   sku                 = "Standard"
   admin_enabled       = true
 }
@@ -122,8 +135,8 @@ resource "azurerm_key_vault_secret" "docker_registry_server_password" {
 
 resource "azurerm_storage_account" "celestials_prod_blob_storage_account" {
   name                     = var.blob_storage_account_name
-  resource_group_name      = azurerm_resource_group.celestials_prod_resource_group.name
-  location                 = azurerm_resource_group.celestials_prod_resource_group.location
+  resource_group_name      = azurerm_resource_group.celestials_prod_resource_group2.name
+  location                 = azurerm_resource_group.celestials_prod_resource_group2.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
   enable_https_traffic_only = true
@@ -161,8 +174,8 @@ resource "azurerm_storage_container" "celestials_prod_blob_storage_container" {
 
 resource "azurerm_postgresql_server" "celestials_prod_pgdb" {
   name                         = var.db_server_name
-  location                     = azurerm_resource_group.celestials_prod_resource_group.location
-  resource_group_name          = azurerm_resource_group.celestials_prod_resource_group.name
+  location                     = azurerm_resource_group.celestials_prod_resource_group2.location
+  resource_group_name          = azurerm_resource_group.celestials_prod_resource_group2.name
   sku_name                     = "B_Gen5_1"
   storage_mb                   = 5120
   backup_retention_days        = 7
@@ -174,15 +187,15 @@ resource "azurerm_postgresql_server" "celestials_prod_pgdb" {
 
 resource "azurerm_postgresql_firewall_rule" "celestials_prod_pgdb_fw" {
   name                = "AllowAppServer"
-  resource_group_name = azurerm_resource_group.celestials_prod_resource_group.name
+  resource_group_name = azurerm_resource_group.celestials_prod_resource_group2.name
   server_name         = azurerm_postgresql_server.celestials_prod_pgdb.name
-  start_ip_address    = "40.81.154.181"
-  end_ip_address      = "40.81.154.181"
+  start_ip_address    = split(",", azurerm_linux_web_app.celestials_prod_web_app.outbound_ip_addresses)[0]
+  end_ip_address      = split(",", azurerm_linux_web_app.celestials_prod_web_app.outbound_ip_addresses)[6]
 }
 
 resource "azurerm_postgresql_database" "celestials_prod_pgdb_db" {
   name                = var.db_name
-  resource_group_name = azurerm_resource_group.celestials_prod_resource_group.name
+  resource_group_name = azurerm_resource_group.celestials_prod_resource_group2.name
   server_name         = var.db_server_name
   charset             = "UTF8"
   collation           = "English_United States.1252"
